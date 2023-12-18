@@ -9,27 +9,38 @@ export default function ModalOpt(props) {
     const [secondtDown, setsecondtDown] = useState(null)
     const [showResenOTP, setShowResendOTP] = useState(false)
     const intervalRef = useRef(null);
-    useEffect(() => {
+    const countDown = () => {
         const countDownDate = new Date().getTime() + (60 * props.expiredLifeTime * 1000);
-
         intervalRef.current = setInterval(() => {
             const now = new Date().getTime();
             const distance = countDownDate - now;
-
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
             setMinutestDown(minutes);
             setsecondtDown(seconds);
-
             if (distance <= 0) {
-                setShowResendOTP(true)
+                props.setCheckResendOTP(false)
+                setMinutestDown(0);
+                setsecondtDown(0);
                 clearInterval(intervalRef.current);
+                setShowResendOTP(true)
             }
         }, 1000);
+    }
 
+    useEffect(() => {
+        countDown()
         return () => clearInterval(intervalRef.current);
-    }, [props.expiredLifeTime]);
+    }, []);
+
+    useEffect(() => {
+        if (props.checkResendOTP === true) {
+            countDown()
+            setShowResendOTP(false)
+        }
+        return () => clearInterval(intervalRef.current);
+    }, [props.checkResendOTP])
+
 
     useEffect(() => {
         setVisible(props.showModalOTP)
@@ -37,6 +48,7 @@ export default function ModalOpt(props) {
     const hideModalOTP = () => {
         clearInterval(intervalRef.current);
         props.hideOTPModal()
+        props.setCheckResendOTP(false)
         setVisible(false)
     }
 
@@ -45,7 +57,11 @@ export default function ModalOpt(props) {
         return this.substring(0, index) + replacement + this.substring(index + replacement.length);
     }
     const handleResendOTP = () => {
-        console.log('dddd')
+        props.reSendOTP()
+    }
+
+    const callAPIWithOTP = () => {
+        props.calAPIWithOTP()
     }
 
     return (
@@ -76,12 +92,10 @@ export default function ModalOpt(props) {
                     <View className="flex flex-row gap-4">
 
                         <Button style={{ borderColor: '#D32D2F', borderWidth: 1 }} className="bg-white mt-8 flex-1 rounded-lg h-12 flex justify-center" onPress={() => hideModalOTP()}><Text className="text-Primary">Cancel</Text></Button>
-                        <Button className="bg-Primary mt-8 flex-1 rounded-lg h-12 flex justify-center" onPress={() => hideModalOTP()}><Text className="text-white">Confirm</Text></Button>
+                        <Button className="bg-Primary mt-8 flex-1 rounded-lg h-12 flex justify-center" onPress={() => callAPIWithOTP()}><Text className="text-white">Confirm</Text></Button>
                     </View>
                 </Modal>
             </Portal>
         </View>
     )
 }
-
-const styles = StyleSheet.create({})

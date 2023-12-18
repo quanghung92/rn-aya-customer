@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View, Image, SafeAreaView } from 'react-native'
+import { StyleSheet, Text, View, Image, SafeAreaView, Keyboard } from 'react-native'
 import React, { useState } from 'react'
 import { ImageBackground } from 'react-native'
 import { TextInput, Button, PaperProvider, ActivityIndicator } from 'react-native-paper'
 import { Pressable } from 'react-native'
 import { useSelector, useDispatch } from 'react-redux';
-import { setUser, setUserLoading } from '../../redux/reducers/userReducer'
-
+import { setUser, setUserLoading, setTokenUser } from '../../redux/reducers/userReducer'
+import axios from 'axios';
 import { APIPost } from '../../common/apicomm'
 
 import PasswordInput from '../../components/passwordInput'
@@ -21,11 +21,13 @@ export default function Login() {
     const [loginFailed, setLoginFailed] = useState('')
     const [OTPNumber, setOPTNumber] = useState('')
     const [showModalOTP, setShowModalOTP] = useState(false)
-
+    const [ExpiredLifeTime, setExpiredLifeTime] = useState(null)
+    const [checkResendOTP, setCheckResendOTP] = useState(false)
     const login = async () => {
         dispatch(setUserLoading(true))
+        Keyboard.dismiss()
         try {
-            const dataLogin = await APIPost('internal/token', {
+            await APIPost('internal/token', {
                 LoginName: userName,
                 Password: passWordCrypto
             }, handleLoginSuccess, handleLoginFaile)
@@ -34,15 +36,55 @@ export default function Login() {
         }
     }
 
+    const calAPIWithOTP = async () => {
+        dispatch(setUserLoading(true))
+        Keyboard.dismiss()
+        try {
+            await APIPost('internal/token', {
+                LoginName: userName,
+                Password: passWordCrypto,
+                Authentication: {
+                    AuthenType: 'SMSOTP',
+                    AuthenCode: OTPNumber,
+                }
+            }, handleLoginSuccess, handleLoginFaile)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const reSendOTP = async () => {
+        dispatch(setUserLoading(true))
+        try {
+            await APIPost('resend/otp', {
+                username: userName,
+            }, resendSuccess, handleResendFaile)
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const resendSuccess = (dataResend) => {
+        dispatch(setUserLoading(false))
+        const { data } = dataResend
+        setCheckResendOTP(true)
+        setExpiredLifeTime(data.ExpiredLifeTime)
+    }
+
+    const handleResendFaile = (error) => {
+        dispatch(setUserLoading(false))
+        console.log(error)
+    }
     const handleLoginSuccess = (dataUser) => {
         dispatch(setUserLoading(false))
         const { data } = dataUser
         if (data.needOTP === 'True') {
             dispatch(setUser(data))
-            console.log(data)
+            setExpiredLifeTime(data.ExpiredLifeTime)
             setShowModalOTP(true)
         } else {
-
+            dispatch(setTokenUser(data.access_token))
+            axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
         }
     }
 
@@ -56,7 +98,7 @@ export default function Login() {
     const handleLoginFaile = (error) => {
         console.log('fale', error)
         dispatch(setUserLoading(false))
-        // setLoginFailed(error.ReasonDesc)
+        setLoginFailed(error.ReasonDesc)
         setShowModal(true)
     }
 
@@ -75,7 +117,7 @@ export default function Login() {
                 <ImageBackground className="w-full  h-full" source={require('../../assets/bg.png')}>
                     {
                         userLoading && (
-                            <View className="absolute bg-black/40 h-full w-full flex-1 justify-center items-center z-20">
+                            <View className="absolute bg-black/40 h-full w-full flex-1 justify-center items-center z-50">
                                 <ActivityIndicator animating={true} color='red' />
                             </View>
                         )
@@ -125,12 +167,15 @@ export default function Login() {
                     {
                         showModalOTP && (
                             <ModalOpt
-                                OTPNumber={OTPNumber}
+                                reSendOTP={reSendOTP}
                                 handleSetOTP={handleSetOTP}
                                 showModalOTP={showModalOTP}
                                 hideOTPModal={hideOTPModal}
                                 phoneNo={userData.phoneNo}
-                                expiredLifeTime={userData.ExpiredLifeTime}
+                                expiredLifeTime={ExpiredLifeTime}
+                                checkResendOTP={checkResendOTP}
+                                setCheckResendOTP={setCheckResendOTP}
+                                calAPIWithOTP={calAPIWithOTP}
                             />
                         )
                     }

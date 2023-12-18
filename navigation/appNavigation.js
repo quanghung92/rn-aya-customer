@@ -8,6 +8,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getClientInfo } from '../common/common';
 import { setClientInfo } from '../redux/reducers/clientInfo';
 
+import BottomNavigation from './bottomNavigation';
+
 import Home from '../screens/noneedlogin/home';
 
 const Stack = createNativeStackNavigator();
@@ -36,7 +38,9 @@ export default function AppNavigation() {
         return (
             <NavigationContainer>
                 <Stack.Navigator>
-                    <Stack.Screen options={{ headerShown: false }} name='home' component={Home} />
+                    <Stack.Screen name='home' options={{
+                        headerShown: false
+                    }} component={BottomNavigation} />
                 </Stack.Navigator>
             </NavigationContainer>
         )
